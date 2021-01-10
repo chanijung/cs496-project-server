@@ -8,6 +8,7 @@ module.exports = function(app, User)
     //         res.json(books);
     //     })
     // });
+
     // // GET SINGLE BOOK
     // app.get('/api/books/:book_id', function(req, res){
     //     Book.findOne({_id: req.params.book_id}, function(err, book){
@@ -17,6 +18,7 @@ module.exports = function(app, User)
     //         res.json(book);
     //     })
     // });
+
     // // // GET BOOK BY AUTHOR
     // app.get('/api/books/author/:author', function(req, res){
     //     Book.find({author: req.params.author}, {_id: 0, title: 1, published_date: 1},  function(err, books){
@@ -25,30 +27,201 @@ module.exports = function(app, User)
     //         res.json(books);
     //     })
     // });
-    // CREATE BOOK
+
+    // Provide user information(contact & gallery) given the uid.
     app.post('/login', function(req, res){
-        console.log("post start");
-        var user = new User();
-        user.uid = req.body.uid;
-        // book.title = req.body.name;
-        // book.author = req.body.author;
-        // book.published_date = new Date(req.body.published_date);
-        user.save(function(err){ // 데이터를 데이터베이스에 저장함.
-            if(err){
-                console.error(err);
-                console.log("save error");
-                res.json({result: 0});
-                return;
+        console.log("login post start");
+        //Find the documents containing this uid in 'users' collection.
+        User.findOne({uid: req.body.uid}, function(err, user){
+            // console.log("uid: ",user.uid,", req.body: ",req.body);
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
             }
-        });
-        console.log("before ending");
-        // res.end();
-        res.json(user);
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                var user = new User();
+                user.uid = req.body.uid;
+                user.save(function(err){ // Save new user document in 'users' collection.
+                    if(err){
+                        console.error(err);
+                        console.log("save error");
+                        res.json({result: 0});
+                        return;
+                    }
+                });
+                console.log("before returning new");
+                return res.json(user);
+            }
+            console.log("user exists");
+            return res.json(user);
+        })
     });
 
-    app.get('/test',function(req,res){
-        res.send("Hello This is a Test");
+    //Provide updated user object with synchronized contacts given current contacts in phone.
+    app.post('/sync/contacts', function(req, res){ //req = {uid:~, contact:~}
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
+        console.log("contact sync post start");
+        var curr_contact = req.body.contacts;
+        console.log("curr contact: ", curr_contact);
+        console.log("req uid: ", req.body.uid);
+        User.findOne({uid: req.body.uid}, function(err, user){
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            console.log("user exists");
+            //Union of two contacts
+            var db_contact = user.contacts;
+            console.log("db contact: ", db_contact);
+            var final_contact = union_arrays(curr_contact, db_contact);
+            //Method 1
+            // var difference = curr_contact.filter(x => !db_contact.includes(x));
+            // console.log("curr-db = ", difference);
+            // final_contact = difference.concat(db_contact);
+            //Method 2
+            // var final_contact = [...new Set(curr_contact.concat(db_contact))];
+            console.log("final_contact = ",final_contact);
+            //Update db
+            user.contacts = final_contact;
+            user.save(function(err){
+                if(err) res.status(500).json({error: 'failed to update'});
+            });
+            //Send updated user object as a response to the client.
+            return res.json(user);
+        })
     });
+
+
+    //Provide updated user object with synchronized gallery given current gallery in phone.
+    app.post('/sync/gallery', function(req, res){ //req = {uid:~, contact:~}
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
+        console.log("gallery sync post start");
+        var curr_gallery = req.body.gallery;
+        console.log("curr gallery: ", curr_gallery);
+        console.log("req uid: ", req.body.uid);
+        User.findOne({uid: req.body.uid}, function(err, user){
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            console.log("user exists");
+            //Union of two gallery
+            var db_gallery = user.gallery;
+            console.log("db gallery: ", db_gallery);
+            var final_gallery = union_arrays(curr_gallery, db_gallery);
+            //Method 1
+            // var difference = curr_gallery.filter(x => !db_gallery.includes(x));
+            // console.log("curr-db = ", difference);
+            // final_gallery = difference.concat(db_gallery);
+            //Method 2
+            // var final_gallery = [...new Set(curr_gallery.concat(db_gallery))];
+            console.log("final_gallery = ",final_gallery);
+            //Update db
+            user.gallery = final_gallery;
+            user.save(function(err){
+                if(err) res.status(500).json({error: 'failed to update'});
+            });
+            //Send updated user object as a response to the client.
+            return res.json(user);
+        })
+    });
+
+
+    //Provide updated user object with synchronized contacts given current contacts in phone.
+    // app.post('/sync/gallery', function(req, res){ //req = {uid:~, contact:~}
+        // console.log("sync post start");
+        // var curr_contact = req.body.contacts;
+        // console.log("req uid: ", req.body.uid);
+        // User.findOne({uid: req.body.uid}, function(err, user){
+        
+        //     if(err) {
+        //         console.log("error");
+        //         return res.status(500).json({error: err});
+        //     }
+        //     if(!user){ //if there's no such user
+        //         console.log("no such user")
+        //         return res.status(500).json({error: err});
+        //     }
+        //     console.log("user exists");
+        //     //Union of two contacts
+        //     var db_contact = user.contact;
+        //     var final_contact = union_arrays(curr_contact, db_contact);
+        //     //Method 1
+        //     // var difference = curr_contact.filter(x => !db_contact.includes(x));
+        //     // console.log("curr-db = ", difference);
+        //     // final_contact = difference.concat(db_contact);
+        //     //Method 2
+        //     // var final_contact = [...new Set(curr_contact.concat(db_contact))];
+        //     console.log("final_contact = ",final_contact);
+        //     //Update db
+        //     user.contact = final_contact;
+        //     user.save(function(err){
+        //         if(err) res.status(500).json({error: 'failed to update'});
+        //     });
+        //     //Send updated user object as a response to the client.
+        //     return res.json(user);
+        // })
+    // });
+
+
+}
+
+function union_arrays(x, y) {
+    var obj = {};
+    for (var i = x.length-1; i >= 0; -- i)
+        obj[x[i][0]] = x[i][1];
+    for (var i = y.length-1; i >= 0; -- i)
+        obj[y[i][0]] = y[i][1];
+    var res = []
+    for (var k in obj) {
+        if (obj.hasOwnProperty(k))  // <-- optional
+        res.push([k, obj[k]]);
+    }
+    return res;
+}
+
+        // console.log("post start");
+        // var user = new User();
+        // // user.uid = req.body.uid;
+        // user.uid = req.body;
+        // user.save(function(err){ // 데이터를 데이터베이스에 저장함.
+        //     if(err){
+        //         console.error(err);
+        //         console.log("save error");
+        //         res.json({result: 0});
+        //         return;
+        //     }
+        // });
+        // console.log("before ending");
+        // res.json(user);
+        // res.end();
+
+
     // // UPDATE THE BOOK
     // app.put('/api/books/:book_id', function(req, res){
     //     Book.findById(req.params.book_id, function(err, book){
@@ -74,4 +247,3 @@ module.exports = function(app, User)
     //         res.status(204).end();
     //     })
     // });
-}
