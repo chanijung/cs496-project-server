@@ -193,6 +193,37 @@ module.exports = function(app, User)
         })
     });
 
+    app.post('/find/friend', function(req, res){
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
+        console.log("/find/friend post start");
+        console.log("req name: ", req.body.name);
+        User.find({name: req.body.name}, function(err, users){
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(users.length==0){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            var profiles = new Array();
+            for (i = 0, len = users.length; i < len; i++) {
+                profiles.push(users[i].profile);
+            }
+            console.log("such friend exists");
+            return res.json({profiles: profiles});
+            
+        })
+    })
+
 
 }
 
