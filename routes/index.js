@@ -51,6 +51,8 @@ module.exports = function(app, User)
                 console.log("no such user")
                 var user = new User();
                 user.uid = req.body.uid;
+                user.name = req.body.name;
+                user.profile = req.body.profile;
                 user.save(function(err){ // Save new user document in 'users' collection.
                     if(err){
                         console.error(err);
@@ -115,7 +117,7 @@ module.exports = function(app, User)
 
 
     //Provide updated user object with synchronized gallery given current gallery in phone.
-    app.post('/sync/gallery', function(req, res){ //req = {uid:~, contact:~}
+    app.post('/camera', function(req, res){ //req = {uid:~, contact:~}
         var date = new Date();
         var dateStr =
             ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
@@ -128,7 +130,7 @@ module.exports = function(app, User)
         console.log("gallery sync post start");
         console.log("req uid: ", req.body.uid);
         var curr_gallery = req.body.gallery;    //java List<String>
-        console.log("curr gallery: ", curr_gallery);
+        console.log("curr gallery length: ", curr_gallery.length);
         
         User.findOne({uid: req.body.uid}, function(err, user){
             if(err) {
@@ -142,7 +144,7 @@ module.exports = function(app, User)
             console.log("user exists");
             //Union of two gallery
             var db_gallery = user.gallery; //JSON array of string
-            console.log("db gallery: ", db_gallery);
+            console.log("db gallery length: ", db_gallery.length);
             //Method 0
             // var final_gallery = union_arrays(curr_gallery, db_gallery);
             //Method 1
@@ -157,6 +159,35 @@ module.exports = function(app, User)
             user.save(function(err){
                 if(err) res.status(500).json({error: 'failed to update'});
             });
+            //Send updated user object as a response to the client.
+            return res.json(user);
+        })
+    });
+
+
+    app.post('/download/gallery', function(req, res){ //req = {uid:~, contact:~}
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
+        console.log("gallery sync post start");
+        console.log("req uid: ", req.body.uid);
+        User.findOne({uid: req.body.uid}, function(err, user){
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            console.log("user exists");
+            console.log("db gallery length: ", user.gallery.length);
             //Send updated user object as a response to the client.
             return res.json(user);
         })
