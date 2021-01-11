@@ -30,6 +30,15 @@ module.exports = function(app, User)
 
     // Provide user information(contact & gallery) given the uid.
     app.post('/login', function(req, res){
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
         console.log("login post start");
         //Find the documents containing this uid in 'users' collection.
         User.findOne({uid: req.body.uid}, function(err, user){
@@ -65,7 +74,7 @@ module.exports = function(app, User)
             ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
             ("00" + date.getDate()).slice(-2) + "/" +
             date.getFullYear() + " " +
-            ("00" + date.getHours()).slice(-2) + ":" +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
             ("00" + date.getMinutes()).slice(-2) + ":" +
             ("00" + date.getSeconds()).slice(-2);
         console.log(dateStr);
@@ -86,7 +95,7 @@ module.exports = function(app, User)
             //Union of two contacts
             var db_contact = user.contacts;
             console.log("db contact: ", db_contact);
-            var final_contact = union_arrays(curr_contact, db_contact);
+            var final_contact = union_contacts(curr_contact, db_contact);
             //Method 1
             // var difference = curr_contact.filter(x => !db_contact.includes(x));
             // console.log("curr-db = ", difference);
@@ -112,14 +121,15 @@ module.exports = function(app, User)
             ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
             ("00" + date.getDate()).slice(-2) + "/" +
             date.getFullYear() + " " +
-            ("00" + date.getHours()).slice(-2) + ":" +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
             ("00" + date.getMinutes()).slice(-2) + ":" +
             ("00" + date.getSeconds()).slice(-2);
         console.log(dateStr);
         console.log("gallery sync post start");
-        var curr_gallery = req.body.gallery;
-        console.log("curr gallery: ", curr_gallery);
         console.log("req uid: ", req.body.uid);
+        var curr_gallery = req.body.gallery;    //java List<String>
+        console.log("curr gallery: ", curr_gallery);
+        
         User.findOne({uid: req.body.uid}, function(err, user){
             if(err) {
                 console.log("error");
@@ -131,15 +141,16 @@ module.exports = function(app, User)
             }
             console.log("user exists");
             //Union of two gallery
-            var db_gallery = user.gallery;
+            var db_gallery = user.gallery; //JSON array of string
             console.log("db gallery: ", db_gallery);
-            var final_gallery = union_arrays(curr_gallery, db_gallery);
+            //Method 0
+            // var final_gallery = union_arrays(curr_gallery, db_gallery);
             //Method 1
             // var difference = curr_gallery.filter(x => !db_gallery.includes(x));
             // console.log("curr-db = ", difference);
             // final_gallery = difference.concat(db_gallery);
             //Method 2
-            // var final_gallery = [...new Set(curr_gallery.concat(db_gallery))];
+            var final_gallery = [...new Set(curr_gallery.concat(db_gallery))];
             console.log("final_gallery = ",final_gallery);
             //Update db
             user.gallery = final_gallery;
@@ -152,46 +163,9 @@ module.exports = function(app, User)
     });
 
 
-    //Provide updated user object with synchronized contacts given current contacts in phone.
-    // app.post('/sync/gallery', function(req, res){ //req = {uid:~, contact:~}
-        // console.log("sync post start");
-        // var curr_contact = req.body.contacts;
-        // console.log("req uid: ", req.body.uid);
-        // User.findOne({uid: req.body.uid}, function(err, user){
-        
-        //     if(err) {
-        //         console.log("error");
-        //         return res.status(500).json({error: err});
-        //     }
-        //     if(!user){ //if there's no such user
-        //         console.log("no such user")
-        //         return res.status(500).json({error: err});
-        //     }
-        //     console.log("user exists");
-        //     //Union of two contacts
-        //     var db_contact = user.contact;
-        //     var final_contact = union_arrays(curr_contact, db_contact);
-        //     //Method 1
-        //     // var difference = curr_contact.filter(x => !db_contact.includes(x));
-        //     // console.log("curr-db = ", difference);
-        //     // final_contact = difference.concat(db_contact);
-        //     //Method 2
-        //     // var final_contact = [...new Set(curr_contact.concat(db_contact))];
-        //     console.log("final_contact = ",final_contact);
-        //     //Update db
-        //     user.contact = final_contact;
-        //     user.save(function(err){
-        //         if(err) res.status(500).json({error: 'failed to update'});
-        //     });
-        //     //Send updated user object as a response to the client.
-        //     return res.json(user);
-        // })
-    // });
-
-
 }
 
-function union_arrays(x, y) {
+function union_contacts(x, y) {
     var obj = {};
     for (var i = x.length-1; i >= 0; -- i)
         obj[x[i][0]] = x[i][1];
@@ -204,6 +178,20 @@ function union_arrays(x, y) {
     }
     return res;
 }
+
+// function union_galleries(x, y) {
+//     var obj = {};
+//     for (var i = x.length-1; i >= 0; -- i)
+//         obj[x[i][0]] = x[i][1];
+//     for (var i = y.length-1; i >= 0; -- i)
+//         obj[y[i][0]] = y[i][1];
+//     var res = []
+//     for (var k in obj) {
+//         if (obj.hasOwnProperty(k))  // <-- optional
+//         res.push([k, obj[k]]);
+//     }
+//     return res;
+// }
 
         // console.log("post start");
         // var user = new User();
