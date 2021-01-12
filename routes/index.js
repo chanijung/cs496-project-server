@@ -153,7 +153,7 @@ module.exports = function(app, User)
             // final_gallery = difference.concat(db_gallery);
             //Method 2
             var final_gallery = [...new Set(curr_gallery.concat(db_gallery))];
-            console.log("final_gallery = ",final_gallery);
+            console.log("final_gallery = ",final_gallery.length);
             //Update db
             user.gallery = final_gallery;
             user.save(function(err){
@@ -221,6 +221,75 @@ module.exports = function(app, User)
             console.log("such friend exists");
             return res.json({profiles: profiles});
             
+        })
+    })
+    app.post('/make/friend', function(req, res){
+        var date = new Date();
+        var dateStr =
+            ("00" + (date.getMonth() + 1)).slice(-2) + "/" +
+            ("00" + date.getDate()).slice(-2) + "/" +
+            date.getFullYear() + " " +
+            ("00" + date.getHours()+9).slice(-2) + ":" +
+            ("00" + date.getMinutes()).slice(-2) + ":" +
+            ("00" + date.getSeconds()).slice(-2);
+        console.log(dateStr);
+        console.log("/make/friend post start");
+        console.log("req name: ", req.body.name);
+        console.log("req relation : ", req.body.relation);
+        var userprofile = req.body.relation[0]; 
+        var friendprofile = req.body.relation[1];
+        
+        // user의 myfriend에 frienduid를 추가 
+        User.findOne({profile: userprofile}, function(err, user){
+            console.log("check");
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            console.log("user exists");
+            //Union of two friends
+            var user_friends = user.myfriends; //JSON array of string
+            console.log("user_friends: ", user_friends);
+
+            var final_user_friends = [...new Set(user_friends.concat(friendprofile))];
+            console.log("final_user_friends = ",final_user_friends);
+            //Update db
+            user.myfriends = final_user_friends;
+            user.save(function(err){
+                if(err) res.status(500).json({error: 'failed to update'});
+            });
+            //Send updated user object as a response to the client.
+            // return res.json(user);
+        })
+        console.log("check");
+        // friend의 myfriend에 useruid를 추가 
+        User.findOne({profile: friendprofile}, function(err, user){
+            if(err) {
+                console.log("error");
+                return res.status(500).json({error: err});
+            }
+            if(!user){ //if there's no such user
+                console.log("no such user")
+                return res.status(500).json({error: err});
+            }
+            console.log("friend exists");
+            //Union of two friends
+            var friend_friends = user.myfriends; //JSON array of string
+            console.log("friend_friends: ", friend_friends);
+
+            var final_friend_friends = [...new Set(friend_friends.concat(userprofile))];
+            console.log("final_friend_friends = ",final_friend_friends);
+            //Update db
+            user.myfriends = final_friend_friends;
+            user.save(function(err){
+                if(err) res.status(500).json({error: 'failed to update'});
+            });
+            //Send updated user object as a response to the client.
+            return res.json(user);
         })
     })
 
